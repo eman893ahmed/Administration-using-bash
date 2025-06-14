@@ -1,0 +1,153 @@
+#!/bin/bash
+
+
+#To ensure user is root before any changes 
+if [ $UID -ne 0 ];
+then
+ whiptail --title "Error" --msgbox "This script must be run as root" 8 45
+ exit  
+fi
+
+
+#Add user option
+add_user() {  
+  USERNAME=$(whiptail --inputbox "Enter the new username:" 10 60 3>&1 1>&2 2>&3)
+  if [ $? -ne 0 ]; then
+     whiptail --title "Canceled" --msgbox "User creation canceled." 8 45
+     exit 1
+  fi
+  FULLNAME=$(whiptail --inputbox "Enter full name for the user:" 10 60 3>&1 1>&2 2>&3)
+  PASSWORD=$(whiptail --passwordbox "Enter password for the user:" 10 60 3>&1 1>&2 2>&3)
+  CONFIRM=$(whiptail --passwordbox "Confirm password:" 10 60 3>&1 1>&2 2>&3)
+  if [ "$PASSWORD" != "$CONFIRM" ]; then
+     whiptail --title "Error" --msgbox "Passwords do not match!" 8 45
+     exit 1
+  fi
+  useradd -m -c "$FULLNAME" "$USERNAME"
+  if [ $? -ne 0 ]; then
+     whiptail --title "Error" --msgbox "This user already exists!" 8 45
+     exit 1
+  fi
+  echo "$USERNAME:$PASSWORD" | chpasswd
+  whiptail --title "Success" --msgbox "User $USERNAME has been created successfully." 8 60
+}
+
+
+#Delete user option
+delete_user() {
+  USERNAME=$(whiptail --inputbox "Enter username to delete:" 10 40 3>&1 1>&2 2>&3) || return
+
+  if id "$USERNAME" &>/dev/null; then
+    userdel -r "$USERNAME"
+    whiptail --title "Deleted" --msgbox "User '$USERNAME' deleted." 8 40
+  else
+    whiptail --title "Error" --msgbox "User '$USERNAME' does not exist." 8 40
+  fi
+}
+
+
+#List users option 
+list_users() {
+  whiptail --title "System Users" --scrolltext --textbox /etc/passwd 20 50
+}
+
+
+#Add Group option
+add_group() {
+  GROUP=$(whiptail --inputbox "Enter new group name:" 10 40 3>&1 1>&2 2>&3) || return
+
+  if getent group "$GROUP" > /dev/null; then
+    whiptail --title "Error" --msgbox "Group '$GROUP' already exists." 8 40
+  else
+    groupadd "$GROUP"
+    whiptail --title "Success" --msgbox "Group '$GROUP' created successfully." 8 40
+  fi
+}
+
+#Delete Group option
+delete_group() {
+  GROUP=$(whiptail --inputbox "Enter group name to delete:" 10 40 3>&1 1>&2 2>&3) || return
+
+  if getent group "$GROUP" > /dev/null; then
+    groupdel "$GROUP"
+    whiptail --title "Deleted" --msgbox "Group '$GROUP' deleted." 8 40
+  else
+    whiptail --title "Error" --msgbox "Group '$GROUP' does not exist." 8 40
+  fi
+}
+
+#List Groups option
+list_groups() {
+  whiptail --title "System Groups" --scrolltext --textbox /etc/group 20 50
+}
+
+
+#Enable User Account Option
+enable() {
+  if passwd -u "$USERNAME" &>/dev/null; then
+    whiptail --title "Success" --msgbox "User '$USERNAME' has been enabled (unlocked)." 8 50
+  else
+    whiptail --title "Error" --msgbox "Failed to enable user '$USERNAME'." 8 50
+  fi
+}
+
+
+#Diable User Account Option
+disable() {
+  if passwd -l "$USERNAME" &>/dev/null; then
+     whiptail --title "Success" --msgbox "User '$USERNAME' has been disabled (locked)." 8 50
+  else
+    whiptail --title "Error" --msgbox "Failed to disable user '$USERNAME'." 8 50
+  fi
+}
+
+
+#Change Password Option
+change() {
+  USERNAME=$(whiptail --inputbox "Enter the username to change password for:" 10 50 3>&1 1>&2 2>&3) || exit
+  PASSWORD=$(whiptail --passwordbox "Enter the new password for $USERNAME:" 10 50 3>&1 1>&2 2>&3) || exit
+  CONFIRM=$(whiptail --passwordbox "Confirm the new password:" 10 50 3>&1 1>&2 2>&3) || exit
+  if [ "$PASSWORD" != "$CONFIRM" ]; then
+    whiptail --title "Mismatch" --msgbox "Passwords do not match. Try again." 8 50
+    exit 1
+  fi
+  echo "$USERNAME:$PASSWORD" | chpasswd
+  if [ $? -eq 0 ]; then
+    whiptail --title "Success" --msgbox "Password for '$USERNAME' changed successfully." 8 50
+  else
+    whiptail --title "Failure" --msgbox "Failed to change password." 8 50
+  fi
+}
+
+
+
+#Menu options 
+while true; do
+ choice=$(whiptail --title "User Administration Menu" --menu "Choose an option" 25 78 16  \
+  "1" "Add User" \
+  "2" "Delete User"  \
+  "3" "List Users"  \
+  "4" "Add Group"  \
+  "5" "Delete Group" \
+  "6" "List Groups"  \
+  "7" "Enable User Account"  \
+  "8" "Disable User Account" \
+  "9" "Change Password" 3>&1 1>&2 2>&3) 
+
+  [ $? -ne 0 ] && break
+  
+  case $choice in
+        1)add_user ;;
+        2)delete_user ;;
+        3)list_users ;;
+	4)add_group ;;
+	5)delete_group ;;
+	6)list_groups ;;
+	7)enable ;;
+	8)disable ;;
+	9)change ;;
+ 
+   esac
+
+done
+
