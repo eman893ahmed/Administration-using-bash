@@ -1,2 +1,2 @@
 # Administration-using-bash
-🔧 A collection of Bash scripts for automating common Linux system administration tasks, including user and group management and more.
+👤📁 Interactive Bash scripts for Linux user and group management using Whiptail — easily create, modify, list, and delete users and groups with a simple text-based UI.
